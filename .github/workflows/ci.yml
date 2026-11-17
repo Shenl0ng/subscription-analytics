@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: lint · types · tests · analyses
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.5"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src
+      - run: uv run pytest -q
+      - name: Run both analyses on the real data (download + checksum)
+        run: |
+          uv run suban ab > ab.json
+          uv run suban churn > churn.json
+          python3 -c "import json; d=json.load(open('ab.json')); assert d['test']['decision'].startswith('gate_40 lowers'), d"
